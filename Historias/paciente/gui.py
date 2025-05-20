@@ -1,16 +1,16 @@
-from sqlite3 import Cursor
 import tkinter as tk
 from tkinter import *
-from tkinter import Button, ttk, scrolledtext, Toplevel
+from tkinter import ttk, Toplevel
 from tkinter import messagebox
-from Modelo.Conexion import ConexionDB
-from Modelo.PacienteDao import Persona, actualizarPaciente, guardarDatoPaciente, listarCondicion, listar, eliminarPaciente
-
+from Modelo.planTratamientoDao import guardarPlanTratamiento, obtenerPlanTratamiento
+from Modelo.PacienteDao import Persona, listarCondicion, listar, eliminarPaciente
+from Modelo.historiaClinicaDao import listarHistoria
 
 class Frame(tk.Frame):
     def __init__(self, root):
         super().__init__(root, width=1280, height=720)
-        self.CI_original = None         # ← Aquí
+        self.CI_original = None
+        self.historia_original = None       
         self.root = root
         self.pack()
         self.config(bg='papaya whip')
@@ -271,13 +271,290 @@ class Frame(tk.Frame):
         self.btnEliminarPaciente.config(width= 20, font=('APTOS',12,'bold'), fg='#DAD5D6', bg='#8A0000', activebackground='#D58A8A', cursor='hand2')
         self.btnEliminarPaciente.grid(row=9, column=1, padx=10, pady=5)
 
-        self.btnHistorialPaciente = tk.Button(self, text='Historia Paciente')
+        self.btnHistorialPaciente = tk.Button(self, text='Historial Paciente', command= self.historiaClinica)
         self.btnHistorialPaciente.config(width= 20, font=('APTOS',12,'bold'), fg='#DAD5D6', bg='#007C79', activebackground='#99F2F0', cursor='hand2')
         self.btnHistorialPaciente.grid(row=9, column=2, padx=10, pady=5) 
+
+        self.btnPlanTratamiento = tk.Button( self, text='Plan de Tratamiento', command= self.abrirPlanTratamiento)
+        self.btnPlanTratamiento.config(width=20, font=('ARIAL',12,'bold'),fg='#DAD5D6', bg='#AA4A44',activebackground='papaya whip',cursor='hand2')
+        self.btnPlanTratamiento.grid(row=9, column=3, padx=10, pady=5)
+
 
         self.btnSalir = tk.Button(self, text='Salir', command=self.root.destroy)
         self.btnSalir.config(width= 20, font=('APTOS',12,'bold'), fg='#DAD5D6', bg='#000000', activebackground='#99F2F0', cursor='hand2')
         self.btnSalir.grid(row=9, column=4, padx=10, pady=5)
+
+    def historiaClinica(self):
+        try:
+            sel = self.tabla.selection()
+            if not sel:
+                messagebox.showerror("Error", "Debe seleccionar un paciente.")
+                return
+
+            item    = self.tabla.item(sel)
+            valores = item['values']
+            ci_str  = str(valores[0])
+            if not ci_str.isdigit():
+                messagebox.showerror("Error", f"CI inválido: {ci_str}")
+                return
+            CI_original = int(ci_str)
+ 
+            # Ventana
+            self.topHistoriaClinica = Toplevel()
+            self.topHistoriaClinica.title('HISTORIAL MÉDICO')
+            self.topHistoriaClinica.resizable(0, 0)
+            self.topHistoriaClinica.config(bg='papaya whip')
+
+            self.listahistoria = listarHistoria(CI_original) or []
+
+            self.topHistoriaClinica.transient(self)  
+            self.topHistoriaClinica.grab_set()     
+            self.topHistoriaClinica.lift()          
+            self.topHistoriaClinica.focus_force()
+
+            if self.listahistoria:
+                grupo_id = self.listahistoria[0][0]  
+            else:
+                grupo_id = None
+
+            for col in range(4):
+                self.topHistoriaClinica.grid_columnconfigure(col, weight=1)
+
+            self.tablaHistoria = ttk.Treeview(
+                self.topHistoriaClinica,
+                columns=('ID', 'Tratamiento', 'FechaHistoria', 'Odontologo'),
+                show='headings'
+            )
+            
+            # Encabezados
+            self.tablaHistoria.heading('ID',            text='ID')
+            self.tablaHistoria.heading('Tratamiento',   text='Tratamiento')
+            self.tablaHistoria.heading('FechaHistoria', text='Fecha')
+            self.tablaHistoria.heading('Odontologo',    text='Odontólogo')
+            # Anchos
+            self.tablaHistoria.column('ID',            width=50,  anchor=W)
+            self.tablaHistoria.column('Tratamiento',   width=450, anchor=W)
+            self.tablaHistoria.column('FechaHistoria', width=100, anchor=W)
+            self.tablaHistoria.column('Odontologo',    width=150, anchor=W)
+
+            self.tablaHistoria.grid(row=0, column=0, columnspan=4, sticky='nse', padx=10, pady=10)
+
+            # Scrollbar
+            scroll = ttk.Scrollbar(
+                self.topHistoriaClinica,
+                orient='vertical',
+                command=self.tablaHistoria.yview
+            )
+            scroll.grid(row=0, column=4, sticky='ns', pady=10, padx=0)
+            self.tablaHistoria.configure(yscrollcommand=scroll.set)
+
+            self.listahistoria = listarHistoria(CI_original) or []
+            for p in self.listahistoria:
+                # p = (idHistoriaClinica, Nombre, Tratamiento, Fecha, Odontologo)
+                self.tablaHistoria.insert(
+                    '', 'end',
+                    values=(p[0], p[2], p[3], p[4])
+                )
+
+            vcmd = (self.topHistoriaClinica.register(lambda s: s == "" or s.isdigit()), '%P')
+
+            tk.Label(self.topHistoriaClinica,
+                    text="ID Historia:",
+                    font=('APTOS',11,'bold'),
+                    bg='papaya whip').grid(row=1, column=0, sticky=W, padx=10, pady=(5,0))
+
+            self.svIDHistoria = tk.StringVar(value=str(grupo_id) if grupo_id else "")
+            self.entryIDHistoria = tk.Entry(
+                self.topHistoriaClinica,
+                textvariable=self.svIDHistoria,
+                font=('APTOS',12),
+                width=15,
+                validate='key', validatecommand=vcmd
+            )
+            self.entryIDHistoria.grid(row=1, column=1, sticky=W, padx=10)
+
+            #Labels y entrys
+
+            tk.Label(self.topHistoriaClinica,
+                    text="ID Historia:",
+                    font=('APTOS',11,'bold'),
+                    bg='papaya whip').grid(row=1, column=0, sticky=W, padx=10, pady=(5,0))
+            self.svIDHistoria = tk.StringVar()
+
+            tk.Entry(self.topHistoriaClinica,
+                    textvariable=self.svIDHistoria,
+                    font=('APTOS',12),
+                    width=15,
+                    validate='key', validatecommand=vcmd
+            ).grid(row=1, column=1, sticky=W, padx=10)
+
+            tk.Label(self.topHistoriaClinica,
+                    text="Tratamiento:",
+                    font=('APTOS',11,'bold'),
+                    bg='papaya whip').grid(row=1, column=2, sticky=W, padx=10, pady=(5,0))
+            self.svTratamiento = tk.StringVar()
+            tk.Entry(self.topHistoriaClinica,
+                    textvariable=self.svTratamiento,
+                    font=('APTOS',12),
+                    width=25).grid(row=1, column=3, sticky= W, padx=10)
+
+            tk.Label(self.topHistoriaClinica,
+                    text="Fecha Historia:",
+                    font=('APTOS',11,'bold'),
+                    bg='papaya whip').grid(row=2, column=0, sticky=W, padx=10, pady=(5,0))
+            self.svFechaHistoria = tk.StringVar()
+            tk.Entry(self.topHistoriaClinica,
+                    textvariable=self.svFechaHistoria,
+                    font=('APTOS',12),
+                    width=15).grid(row=2, column=1, padx=10, sticky=W, pady=(5,0))
+
+            tk.Label(self.topHistoriaClinica,
+                    text="Odontólogo:",
+                    font=('APTOS',11,'bold'),
+                    bg='papaya whip').grid(row=2, column=2, sticky=W, padx=10, pady=(5,0))
+            self.svOdontologo = tk.StringVar()
+            tk.Entry(self.topHistoriaClinica,
+                    textvariable=self.svOdontologo,
+                    font=('APTOS',12),
+                    width=25).grid(row=2, column=3, padx=10, pady=(5,0))
+
+            # Botones de las historias
+            self.btnGuardarHistoria = tk.Button(
+                self.topHistoriaClinica,
+                text='Agregar Historia',
+                width=15, font=('ARIAL',12,'bold'),
+                fg='#DAD5D6', bg='#158645',
+                cursor='hand2', activebackground='papaya whip',
+                command=lambda: self._guardarHistoria(CI_original)
+            )
+            self.btnGuardarHistoria.grid(row=3, column=0, padx=10, pady=15)
+
+            self.btnEditarHistoria = tk.Button(
+                self.topHistoriaClinica,
+                text='Editar Historia',
+                width=15, font=('ARIAL',12,'bold'),
+                fg='#DAD5D6', bg='#1E0075',
+                cursor='hand2', activebackground='#9379E0',
+                command= self.editarHistoria
+            )
+            self.btnEditarHistoria.grid(row=3, column=1, padx=10, pady=15)
+
+            self.btnEliminarHistoria = tk.Button(
+                self.topHistoriaClinica,
+                text='Eliminar Historia',
+                width=15, font=('ARIAL',12,'bold'),
+                fg='#DAD5D6', bg='#8A0000',
+                cursor='hand2', activebackground='#D58A8A',
+                command=lambda: self._eliminarHistoria(CI_original)
+            )
+            self.btnEliminarHistoria.grid(row=3, column=2, padx=10, pady=15)
+
+            self.btnSalirHistoria = tk.Button(
+                self.topHistoriaClinica,
+                text='Salir',
+                width=15, font=('ARIAL',12,'bold'),
+                fg='#DAD5D6', bg='#000000',
+                cursor='hand2', activebackground='#99F2F0',
+                command=self.topHistoriaClinica.destroy
+            )
+            self.btnSalirHistoria.grid(row=3, column=3, padx=10, pady=15)
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+    
+    def cargarDatosHistoria(self):
+        seleccion = self.tablaHistoria.selection()
+        if not seleccion:
+            messagebox.showerror("Error", "Debe seleccionar una historia.")
+            return
+
+        item = self.tablaHistoria.item(seleccion)
+        valores = item["values"]
+
+        self.svTratamiento.set(valores[1])  
+        self.svFechaHistoria.set(valores[2])  
+        self.svOdontologo.set(valores[3])  
+
+    def _guardarHistoria(self, CI):
+        from Modelo.historiaClinicaDao import guardarHistoria, actualizarHistoria, listarHistoria
+
+        trat  = self.svTratamiento.get().strip()
+        fecha = self.svFechaHistoria.get().strip()
+        odon  = self.svOdontologo.get().strip()
+        if not trat or not fecha or not odon:
+            messagebox.showwarning("Validación", "Todos los campos son obligatorios.", parent=self.topHistoriaClinica)
+            return
+
+        if self.historia_original is None:
+            guardarHistoria(CI, trat, fecha, odon)
+            msg = "Historia clínica agregada correctamente."
+        else:
+            actualizarHistoria(self.historia_original, trat, fecha, odon)
+            msg = "Historia clínica actualizada correctamente."
+
+        self.listahistoria = listarHistoria(CI)
+        self.tablaHistoria.delete(*self.tablaHistoria.get_children())
+        for h in self.listahistoria:
+            self.tablaHistoria.insert('', 'end', values=(h[0], h[2], h[3], h[4]))
+
+        messagebox.showinfo("Éxito", msg, parent=self.topHistoriaClinica)
+
+        self.entryIDHistoria.config(state='normal')
+
+        
+        self.svIDHistoria.set('')
+        self.svTratamiento.set('')
+        self.svFechaHistoria.set('')
+        self.svOdontologo.set('')
+        self.historia_original = None
+        self.btnGuardarHistoria.config(text='Agregar Historia')
+
+    
+    def editarHistoria(self):
+        sel = self.tablaHistoria.selection()
+        if not sel:
+            messagebox.showerror("Error", "Seleccione una historia para editar.", parent=self.topHistoriaClinica)
+            return
+        
+        item = self.tablaHistoria.item(sel)
+        valores = item['values']
+       
+        self.historia_original = valores[0]
+        self.svTratamiento.set(valores[1])
+        self.svFechaHistoria.set(valores[2])
+        self.svOdontologo.set(valores[3])
+
+        self.entryIDHistoria.config(state='disabled')
+        self.btnGuardarHistoria.config(text="Guardar Cambios")
+
+    def _eliminarHistoria(self, CI):
+        from Modelo.historiaClinicaDao import eliminarHistoria, listarHistoria
+
+        sel = self.tablaHistoria.selection()
+        if not sel:
+            messagebox.showerror("Error", "Seleccione una historia para eliminar.", parent=self.topHistoriaClinica)
+            return
+
+        item = self.tablaHistoria.item(sel)
+        idHistoria = item['values'][0]
+
+        confirm = messagebox.askyesno("Confirmar", f"¿Eliminar la historia #{idHistoria}?", parent=self.topHistoriaClinica)
+        if not confirm:
+            return
+
+        eliminarHistoria(idHistoria)
+
+        self.listahistoria = listarHistoria(CI)
+        self.tablaHistoria.delete(*self.tablaHistoria.get_children())
+        for h in self.listahistoria:
+            self.tablaHistoria.insert('', 'end', values=(h[0], h[2], h[3], h[4]))
+
+        self.svIDHistoria.set('')
+        self.svTratamiento.set('')
+        self.svFechaHistoria.set('')
+        self.svOdontologo.set('')
+        messagebox.showinfo("Éxito", f"Historia #{idHistoria} eliminada.", parent=self.topHistoriaClinica)
+
 
     def editarPaciente(self):
         try:
@@ -336,4 +613,203 @@ class Frame(tk.Frame):
 
         except Exception as e:
             messagebox.showerror("Error", f"Ha ocurrido un error al eliminar el paciente: {e}")
+    
+    def abrirPlanTratamiento(self):
+        try:
+            if hasattr(self, 'topPlanTratamiento') \
+            and self.topPlanTratamiento.winfo_exists():
+                self.topPlanTratamiento.lift()
+                self.topPlanTratamiento.focus_force()
+            sel = self.tabla.selection()
+        
+            seleccion = self.tabla.selection()
+            if not seleccion:
+                messagebox.showerror("Error", "Debe seleccionar un paciente.")
+                return
 
+            item = self.tabla.item(seleccion)
+            valores = item["values"]
+            ci_str = str(valores[0])
+            if not ci_str.isdigit():
+                messagebox.showerror("Error", f"CI inválido: {ci_str}")
+                return
+            CI_original = int(ci_str)
+
+            self.topPlanTratamiento = tk.Toplevel()
+            self.topPlanTratamiento.title("PLAN DE TRATAMIENTO")
+            self.topPlanTratamiento.geometry("730x350")
+            self.centrarVentana(self.topPlanTratamiento, 720, 330)
+            self.topPlanTratamiento.config(bg="papaya whip")
+            self.topPlanTratamiento.transient(self)    
+            self.topPlanTratamiento.grab_set()         
+            self.topPlanTratamiento.lift()             
+            self.topPlanTratamiento.focus_force()      
+            self.topPlanTratamiento.resizable(False, False)  
+
+            from Modelo.planTratamientoDao import obtenerPlanTratamiento
+            plan = obtenerPlanTratamiento(CI_original)
+
+            frame_entrys = tk.Frame(self.topPlanTratamiento, bg="papaya whip")
+            frame_entrys.grid(row=0, column=0, columnspan=4, padx=10, pady=10, sticky="ew")
+
+            frame_botones = tk.Frame(self.topPlanTratamiento, bg="papaya whip")
+            frame_botones.grid(row=1, column=0, columnspan=4, padx=10, pady=10, sticky="ew")
+
+            frame_entrys.grid_columnconfigure(0, weight=1, minsize=100)  
+            frame_entrys.grid_columnconfigure(1, weight=3, minsize=300)  
+
+            from Modelo.planTratamientoDao import obtenerPlanTratamiento
+            plan = obtenerPlanTratamiento(CI_original)  
+            self.plan_existe = bool(plan)
+
+            self.entrys_plan = {}
+
+            campos = [("R1:", "R1"), ("R2:", "R2"), ("R3:", "R3"), ("R4:", "R4"),
+                    ("Limpieza:", "limpieza"), ("Extracción:", "extraccion"), ("Otros:", "otros")]
+
+            for idx, (label_text, campo) in enumerate(campos):
+                tk.Label(
+                    frame_entrys,
+                    text=label_text,
+                    font=("APTOS", 11, "bold"),
+                    bg="papaya whip"
+                ).grid(row=idx, column=0, padx=10, pady=5, sticky="w")
+
+                if plan:
+                    valor_inicial = plan[idx] or ""
+                else:
+                    valor_inicial = ""
+
+                entry = tk.Entry(
+                    frame_entrys,
+                    font=("APTOS", 12),
+                    width=50
+                )
+                entry.insert(0, valor_inicial)
+
+                if plan:
+                    entry.config(state="disabled")
+
+                entry.grid(row=idx, column=1, padx=(10, 20), pady=5, sticky="ew")
+                self.entrys_plan[campo] = entry
+
+                entry.grid(row=idx, column=1, padx=(10, 20), pady=5, sticky="ew")
+                self.entrys_plan[campo] = entry
+
+            frame_btn = tk.Frame(self.topPlanTratamiento, bg="papaya whip")
+            frame_btn.grid(row=1, column=0, columnspan=4, sticky="ew", padx=10, pady=10)
+            for col in range(4):  
+                frame_botones.grid_columnconfigure(col, weight=1, minsize=150)
+
+            texto = "Guardar Cambios" if self.plan_existe else "Guardar Plan"
+            self.btn_guardar = tk.Button(
+                frame_btn, text=texto, font=("ARIAL",12,"bold"),
+                fg="#DAD5D6", bg="#158645", width=15, cursor='hand2',
+                command=lambda: self._guardarPlan(CI_original)
+            )
+            self.btn_guardar.grid(row=0, column=0, padx=5, pady=10, sticky="ew")
+
+            btn_editar = tk.Button(
+                frame_btn, text="Editar Plan", font=("ARIAL",12,"bold"),
+                fg="#DAD5D6", bg="#1658a2", width=15, cursor='hand2',
+                command=self.editarPlanDeTratamiento
+            )
+            btn_editar.grid(row=0, column=1, padx=5, pady=10, sticky="ew")
+
+            btn_eliminar = tk.Button(
+                frame_btn, text="Eliminar Plan", font=("ARIAL",12,"bold"),
+                fg="#DAD5D6", bg="#B00000", width=15, cursor='hand2',
+                command=lambda: self.eliminarPlanDeTratamiento(CI_original)
+            )
+            btn_eliminar.grid(row=0, column=2, padx=5, pady=10, sticky="ew")
+
+            btn_salir = tk.Button(
+                frame_btn, text="Salir", font=("ARIAL",12,"bold"),
+                fg="#DAD5D6", bg="#000000", width=15, cursor='hand2',
+                command=self.topPlanTratamiento.destroy
+            )
+            btn_salir.grid(row=0, column=3, padx=5, pady=10, sticky="ew")
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e), parent=self)
+
+    def abrirPlanDeTratamiento(self):
+        ventana_plan = tk.Toplevel()
+        ventana_plan.title("PLAN DE TRATAMIENTO")
+        ventana_plan.geometry("400x500")
+
+        campos = ["R1", "R2", "R3", "R4", "Limpieza", "Extracción", "Otros"]
+        self.entrys_plan = {}
+
+        plan = obtenerPlanTratamiento(self.CI_original)
+
+        for i, campo in enumerate(campos):
+            label = tk.Label(ventana_plan, text=campo)
+            label.grid(row=i, column=0, padx=10, pady=10)
+            
+            entry = tk.Entry(ventana_plan)
+            entry.grid(row=i, column=1, padx=10, pady=10)
+
+        btn_guardar = tk.Button(ventana_plan, text="Guardar", command=lambda: self.guardarPlanDeTratamiento())
+        btn_guardar.grid(row=len(campos), column=0, columnspan=2, pady=20)
+
+        self.btn_guardar = btn_guardar
+        ventana_plan.mainloop()
+
+    def editarPlanDeTratamiento(self):
+        for entry in self.entrys_plan.values():
+            entry.config(state="normal")
+        self.btn_guardar.config(text="Guardar Cambios")
+
+
+    def _guardarPlan(self, ci):
+        datos = {k: e.get() for k, e in self.entrys_plan.items()}
+        try:
+            guardarPlanTratamiento(ci, datos)
+            messagebox.showinfo("Éxito", "Plan de tratamiento guardado.", parent=self.topPlanTratamiento)
+            for entry in self.entrys_plan.values():
+                entry.config(state="disabled")
+            self.btn_guardar.config(text="Guardar Plan")
+        except Exception as e:
+            messagebox.showerror("Error", f"No se guardó: {e}", parent=self.topPlanTratamiento)
+    
+    def eliminarPlanDeTratamiento(self, ci):
+        confirm = messagebox.askyesno(
+            "Confirmar eliminación",
+            f"¿Eliminar el plan de tratamiento del paciente con CI {ci}?",
+            parent=self.topPlanTratamiento
+        )
+        if not confirm:
+            return
+
+        from Modelo.planTratamientoDao import eliminarPlanTratamiento
+        eliminarPlanTratamiento(ci)
+
+        messagebox.showinfo(
+            "Plan eliminado",
+            "El plan de tratamiento se eliminó correctamente.",
+            parent=self.topPlanTratamiento
+        )
+        for entry in self.entrys_plan.values():
+            entry.config(state="normal")
+            entry.delete(0, tk.END) 
+
+        self.plan_existe = False
+        self.btn_guardar.config(text="Guardar Plan")
+
+
+    def centrarVentana(self, ventana, ancho, alto):
+            """
+            Centra una ventana en la pantalla principal.
+            
+            Args:
+                ventana (tk.Toplevel | tk.Tk): La ventana que quieres centrar.
+                ancho (int): Ancho de la ventana.
+                alto (int): Alto de la ventana.
+            """
+            ventana.update_idletasks()  
+            ancho_pantalla = ventana.winfo_screenwidth()
+            alto_pantalla = ventana.winfo_screenheight()
+            x = (ancho_pantalla // 2) - (ancho // 2)
+            y = (alto_pantalla // 2) - (alto // 2)
+            ventana.geometry(f"{ancho}x{alto}+{x}+{y}")
