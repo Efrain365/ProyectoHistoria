@@ -5,6 +5,8 @@ from tkinter import messagebox
 from Modelo.planTratamientoDao import guardarPlanTratamiento, obtenerPlanTratamiento
 from Modelo.PacienteDao import Persona, listarCondicion, listar, eliminarPaciente
 from Modelo.historiaClinicaDao import listarHistoria
+from paciente.gui import Frame
+import sys
 
 class Frame(tk.Frame):
     def __init__(self, root):
@@ -17,6 +19,8 @@ class Frame(tk.Frame):
         self.campospaciente()
         self.deshabilitar()
         self.tablaPaciente()
+        self.root.protocol("WM_DELETE_WINDOW", self.confirmar_cierre)
+        self.centrarVentana(root, 1280, 585)
 
  #LABELS
 
@@ -139,6 +143,10 @@ class Frame(tk.Frame):
         self.tablaPaciente()
 
     def buscarCondicion(self):
+        if not self.validar_campos(self.entryBuscarNombre, self.entryBuscarCI):
+            messagebox.showerror("Error", "Debe ingresar alguna cedula o nombre para buscar pacientes")
+            return
+        
         if len(self.svBuscarCI.get()) > 0 or len(self.svBuscarNombre.get()) > 0:
             where = "WHERE 1=1" 
             if(len(self.svBuscarCI.get())) > 0:
@@ -151,6 +159,10 @@ class Frame(tk.Frame):
             self.tablaPaciente()
 
     def guardarPaciente(self):
+        if not self.validar_campos(self.entryNombre, self.entryCI, self.entryEdad, self.entryTlfn, self.entryEnfermedad, self.entryAlergia, self.entryMedicamento):
+            messagebox.showerror("Error", "Todos los campos deben ser rellenados")
+            return
+        
         from Modelo.PacienteDao import guardarDatoPaciente, actualizarPaciente
 
         nombre     = self.svNombre.get()
@@ -176,8 +188,6 @@ class Frame(tk.Frame):
         self.deshabilitar()
         self.tablaPaciente()
 
-
-    
     def habilitar(self):
         self.svNombre.set('')
         self.svCI.set('')
@@ -218,6 +228,11 @@ class Frame(tk.Frame):
         self.btnGuardar.config(state='disabled')
         self.btnCancelar.config(state='disabled')
     
+    def cerrarventana(self):
+        if messagebox.askokcancel("Salir", "¿Estás seguro de que quieres salir?"):
+            self.destroy()  
+            sys.exit()
+
     def tablaPaciente(self, where=""):
       
         if len(where) > 0:
@@ -279,8 +294,7 @@ class Frame(tk.Frame):
         self.btnPlanTratamiento.config(width=20, font=('ARIAL',12,'bold'),fg='#DAD5D6', bg='#AA4A44',activebackground='papaya whip',cursor='hand2')
         self.btnPlanTratamiento.grid(row=9, column=3, padx=10, pady=5)
 
-
-        self.btnSalir = tk.Button(self, text='Salir', command=self.root.destroy)
+        self.btnSalir = tk.Button(self, text='Salir', command= self.cerrarventana)
         self.btnSalir.config(width= 20, font=('APTOS',12,'bold'), fg='#DAD5D6', bg='#000000', activebackground='#99F2F0', cursor='hand2')
         self.btnSalir.grid(row=9, column=4, padx=10, pady=5)
 
@@ -301,9 +315,10 @@ class Frame(tk.Frame):
  
             # Ventana
             self.topHistoriaClinica = Toplevel()
-            self.topHistoriaClinica.title('HISTORIAL MÉDICO')
+            self.topHistoriaClinica.title('HISTORIA CLINICA')
             self.topHistoriaClinica.resizable(0, 0)
             self.topHistoriaClinica.config(bg='papaya whip')
+            self.centrarVentana(self.topHistoriaClinica, 760, 360)
 
             self.listahistoria = listarHistoria(CI_original) or []
 
@@ -333,7 +348,7 @@ class Frame(tk.Frame):
             self.tablaHistoria.heading('Odontologo',    text='Odontólogo')
             # Anchos
             self.tablaHistoria.column('ID',            width=50,  anchor=W)
-            self.tablaHistoria.column('Tratamiento',   width=450, anchor=W)
+            self.tablaHistoria.column('Tratamiento',   width=400, anchor=W)
             self.tablaHistoria.column('FechaHistoria', width=100, anchor=W)
             self.tablaHistoria.column('Odontologo',    width=150, anchor=W)
 
@@ -813,3 +828,21 @@ class Frame(tk.Frame):
             x = (ancho_pantalla // 2) - (ancho // 2)
             y = (alto_pantalla // 2) - (alto // 2)
             ventana.geometry(f"{ancho}x{alto}+{x}+{y}")
+
+    def confirmar_cierre(self):
+        if messagebox.askyesno("Confirmar cierre", "¿Estás seguro de que deseas salir del sistema?"):
+            self.root.destroy()  
+
+    def validar_campos(self, *campos):
+            """Valida que los campos no estén vacíos.
+            
+            Args:
+                *campos: Widgets Entry que se desean validar.
+                
+            Returns:
+                bool: True si todos los campos tienen datos, False si alguno está vacío.
+            """
+            for campo in campos:
+                if not campo.get().strip():  # Verifica si el texto está vacío o son solo espacios
+                    return False
+            return True

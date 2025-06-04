@@ -13,7 +13,7 @@ def main():
     root.wait_window(login_window)  # Esperar hasta que se cierre la ventana de login
 
     # Si las credenciales son válidas, inicializar la ventana principal
-    root.title('HISTORIA CLINICA')
+    root.title('REGISTRAR PACIENTE')
     root.resizable(0, 0)
     frame = Frame(root)
     frame.mainloop()
