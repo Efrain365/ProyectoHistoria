@@ -9,6 +9,7 @@ class LoginWindow(tk.Toplevel):
     def __init__(self, root):
         super().__init__(root)
         self.root = root
+        self.iconbitmap(r'C:\Users\Efrain\Desktop\ProyectoHistoria\Historias\img\Icono.ico')
         self.dao = LoginDAO_()
         self.geometry("375x220")
         self.title("INICIAR SESIÓN")
@@ -50,7 +51,6 @@ class LoginWindow(tk.Toplevel):
                                   fg='#DAD5D6', bg="#000000",
                                   cursor='hand2', activebackground='papaya whip', command=self.close_window)
         self.btnSalir.grid(row=3, column=1, padx=10, pady=15, sticky="e")
-
 
     
 

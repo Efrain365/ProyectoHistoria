@@ -3,9 +3,10 @@ from tkinter import *
 from tkinter import ttk, Toplevel
 from tkinter import messagebox
 from Modelo.planTratamientoDao import guardarPlanTratamiento, obtenerPlanTratamiento
-from Modelo.PacienteDao import Persona, listarCondicion, listar, eliminarPaciente
+from Modelo.PacienteDao import Persona, listarCondicion, listar, eliminarPaciente, Imprimir
 from Modelo.historiaClinicaDao import listarHistoria
 from paciente.gui import Frame
+import sqlite3
 import sys
 
 class Frame(tk.Frame):
@@ -134,6 +135,10 @@ class Frame(tk.Frame):
         self.btnCancelar = tk.Button(self, text= 'Cancelar', command=self.deshabilitar)
         self.btnCancelar.config(width=20, font=('ARIAL',12,'bold'), fg='#DAD5D6', bg='#B00000', cursor='hand2', activebackground='papaya whip')
         self.btnCancelar.grid(column=2, row=7, padx=10, pady= 5)
+
+        self.btn_generar_pdf = tk.Button(self, text="Imprimir Historia", command=self.Imprimir_historia) 
+        self.btn_generar_pdf.config(width=20, font=('ARIAL',12,'bold'), fg='#DAD5D6', bg="#4B15A1", cursor='hand2', activebackground='papaya whip')                             
+        self.btn_generar_pdf.grid(column=4, row=7, padx=10, pady= 5)
     
         from Modelo.PacienteDao import guardarDatoPaciente, actualizarPaciente
     
@@ -157,6 +162,28 @@ class Frame(tk.Frame):
             self.tablaPaciente(where)
         else:
             self.tablaPaciente()
+        
+    def Imprimir_historia(self):
+        # Obtener el paciente seleccionado
+        seleccion = self.tabla.selection()
+        if not seleccion:
+            messagebox.showerror("Error", "Debe seleccionar un paciente.")
+            return
+
+        valores = self.tabla.item(seleccion)["values"]
+        if not valores:
+            messagebox.showerror("Error", "No se pudieron obtener los datos del paciente.")
+            return
+
+        CI = valores[0]  # La cédula del paciente está en la primera columna
+        try:
+            ruta_pdf = Imprimir(CI)  # Ahora Imprimir debe devolver la ruta del archivo o None
+            if ruta_pdf:  # Si la ruta es válida
+                messagebox.showinfo("Éxito", f"Historia clínica generada para C.I. {CI} en:\n{ruta_pdf}")
+            else:  # Si el usuario canceló el guardado
+                messagebox.showwarning("Cancelado", "El guardado del PDF fue cancelado.")
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo generar la historia clínica: {e}")
 
     def guardarPaciente(self):
         if not self.validar_campos(self.entryNombre, self.entryCI, self.entryEdad, self.entryTlfn, self.entryEnfermedad, self.entryAlergia, self.entryMedicamento):
@@ -319,6 +346,7 @@ class Frame(tk.Frame):
             self.topHistoriaClinica.resizable(0, 0)
             self.topHistoriaClinica.config(bg='papaya whip')
             self.centrarVentana(self.topHistoriaClinica, 760, 360)
+            self.topHistoriaClinica.iconbitmap(r'C:\Users\Efrain\Desktop\ProyectoHistoria\Historias\img\Icono.ico')
 
             self.listahistoria = listarHistoria(CI_original) or []
 
@@ -658,7 +686,8 @@ class Frame(tk.Frame):
             self.topPlanTratamiento.transient(self)    
             self.topPlanTratamiento.grab_set()         
             self.topPlanTratamiento.lift()             
-            self.topPlanTratamiento.focus_force()      
+            self.topPlanTratamiento.focus_force()
+            self.topPlanTratamiento.iconbitmap(r'C:\Users\Efrain\Desktop\ProyectoHistoria\Historias\img\Icono.ico')    
             self.topPlanTratamiento.resizable(False, False)  
 
             from Modelo.planTratamientoDao import obtenerPlanTratamiento
@@ -846,3 +875,5 @@ class Frame(tk.Frame):
                 if not campo.get().strip():  # Verifica si el texto está vacío o son solo espacios
                     return False
             return True
+
+    
