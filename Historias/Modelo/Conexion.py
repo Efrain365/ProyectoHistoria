@@ -4,13 +4,10 @@ import os
 class ConexionDB:
     def __init__(self):
         try:
-            # Detectar la ubicación del archivo actual
             BASE_DIR = os.path.dirname(os.path.abspath(__file__))
             
-            # Construir la ruta a la base de datos
             self.BaseDatos = os.path.join(BASE_DIR, '..', 'Database', 'DBhistorias.db')
             
-            # Conectar a la base de datos
             self.conexion = sqlite3.connect(self.BaseDatos)
             self.cursor = self.conexion.cursor()
         except sqlite3.Error as e:

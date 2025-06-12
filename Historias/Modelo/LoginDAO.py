@@ -9,10 +9,17 @@ class LoginDAO_:
         try:
             cursor = self.db.cursor
 
-            cursor.execute("SELECT * FROM usuarios WHERE Nombre = ? AND Contraseña = ?", (usuario, password))
+            sql = "SELECT Rol FROM usuarios WHERE Nombre = ? AND Contraseña = ?"
+            print(f"SQL Query: {sql}")
+            print(f"Parameters: usuario={usuario}, password={password}")
+
+            cursor.execute(sql, (usuario, password))
             resultado = cursor.fetchone()
 
-            return resultado is not None 
+            if resultado:
+                return resultado[0]  # Devuelve el rol del usuario
+            else:
+                return None
 
         except Exception as e:
             print(f"Error al validar credenciales: {e}")

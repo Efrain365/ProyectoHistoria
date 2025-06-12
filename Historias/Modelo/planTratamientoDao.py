@@ -7,7 +7,7 @@ def obtenerPlanTratamiento(CI):
     """
     conexion = ConexionDB()
     sql = """
-      SELECT R1, R2, R3, R4, Limpieza, Extraccion, Otros
+      SELECT R1, R2, R3, R4, Limpieza, Extraccion, Otros, Nota
       FROM PlanDeTratamiento
       WHERE CI = ?
     """
@@ -32,13 +32,13 @@ def guardarPlanTratamiento(ci, datos_plan):
         if existe:
             sql_actualizar = """
                 UPDATE PlanDeTratamiento
-                SET R1 = ?, R2 = ?, R3 = ?, R4 = ?, Limpieza = ?, Extraccion = ?, Otros = ?
+                SET R1 = ?, R2 = ?, R3 = ?, R4 = ?, Limpieza = ?, Extraccion = ?, Otros = ?, Nota = ?
                 WHERE CI = ?
             """
             conexion.cursor.execute(sql_actualizar, (*datos_plan.values(), ci))
         else:
             sql_insertar = """
-                INSERT INTO PlanDeTratamiento (CI, R1, R2, R3, R4, Limpieza, Extraccion, Otros)
+                INSERT INTO PlanDeTratamiento (CI, R1, R2, R3, R4, Limpieza, Extraccion, Otros, Nota)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """
             conexion.cursor.execute(sql_insertar, (ci, *datos_plan.values()))

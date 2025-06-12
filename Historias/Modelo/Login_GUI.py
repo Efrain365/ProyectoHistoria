@@ -9,13 +9,13 @@ class LoginWindow(tk.Toplevel):
     def __init__(self, root):
         super().__init__(root)
         self.root = root
-        self.iconbitmap(r'C:\Users\Efrain\Desktop\ProyectoHistoria\Historias\img\Icono.ico')
         self.dao = LoginDAO_()
         self.geometry("375x220")
         self.title("INICIAR SESIÓN")
         self.config(bg='papaya whip')
         self.resizable(0, 0)
         self.centrarVentana(self, 375, 220)
+        self.iconbitmap(r'C:\Users\Efrain\Desktop\ProyectoHistoria\Historias\img\Icono.ico')
 
         self.protocol("WM_DELETE_WINDOW", self.close_window)
 
@@ -41,13 +41,13 @@ class LoginWindow(tk.Toplevel):
 
         # Botón de Iniciar Sesión
         self.btnLogin = tk.Button(self, text="Iniciar Sesión",
-                                  width=13, font=('ARIAL', 12, 'bold'),
-                                  fg='#DAD5D6', bg="#08A52A",
+                                  width=13, font=('APTOS DISPLAY', 12, 'bold'),
+                                  fg='#DAD5D6', bg="#1DB92A",
                                   cursor='hand2', activebackground='papaya whip', command=self.validar_credenciales)
         self.btnLogin.grid(row=3, column=0, padx=10, pady=15, sticky="w")
 
         # Botón de Salir
-        self.btnSalir = tk.Button(self, text="Salir", width=13, font=('ARIAL', 12, 'bold'),
+        self.btnSalir = tk.Button(self, text="Salir", width=13, font=('APTOS DISPLAY', 12, 'bold'),
                                   fg='#DAD5D6', bg="#000000",
                                   cursor='hand2', activebackground='papaya whip', command=self.close_window)
         self.btnSalir.grid(row=3, column=1, padx=10, pady=15, sticky="e")
@@ -78,8 +78,18 @@ class LoginWindow(tk.Toplevel):
     def validar_credenciales(self):
         usuario = self.entryUsuario.get()
         password = self.entryPassword.get()
-        if self.dao.validar_credenciales(usuario, password):
+        rol = self.dao.validar_credenciales(usuario, password) # Obtener el rol
+        if rol:
+            import HistoriaClinica
+            HistoriaClinica.is_logging_in = False
             self.destroy()  # Cerrar la ventana de inicio de sesión
-            self.root.deiconify()  # Mostrar la ventana principal
+            self.root.deiconify()  # Mostrar the main window
+            try:
+                from paciente.gui import Frame
+                main_window = Frame(self.root, rol)
+                main_window.pack()
+                self.root.mainloop()
+            except Exception as e:
+                messagebox.showerror("Error", f"Error creating main window: {e}")
         else:
             messagebox.showerror("Error", "Credenciales incorrectas")
